@@ -1,11 +1,47 @@
 #!/bin/bash
 
+shopt -s nullglob
 dt=$(date --date yesterday "+%Y%m%d")
-#dt=20161017
+#dt=20161021
 srcDir=/var/lib/motion
 destDir=~/motionBkup/
-tarFile=${dt}MotionFiles.tar.gz
+tarFile=${dt}MotionFiles.tar
 tempFile=/tmp/tempList.txt
+arr=(${srcDir}/*${dt}*)
+
+
+echo "GENERATING LIST OF FILES TO TAR..."
+for ((i=0; i<${#arr[@]}; i++)); 
+do
+    echo "${arr[$i]}"
+done
+
+echo "TARING UP MOTION FILES FROM ${dt}...."
+tar -cf /tmp/${tarFile} --files-from /dev/null
+
+for f in "${arr[@]}"
+do
+  echo $f
+  tar -rf /tmp/${tarFile} $f
+done
+gzip /tmp/${tarFile}
+
+echo "MOVING TARED FILE TO ${destDir}..."
+sudo mv /tmp/${tarFile}.gz ${destDir}
+
+echo "DELETING TARED FILES..."
+for f in "${arr[@]}"
+do
+  echo "REMOVING FILE $f...."
+  sudo rm -rf $f
+done
+
+exit
+
+
+
+
+
 
 echo $dt
 #ls ${dir}/*${dt}*
