@@ -7,6 +7,7 @@ tempFile=/tmp/tempList.txt
 prevDay=$(date --date yesterday "+%Y%m%d")
 RED='\033[0;41;30m'
 STD='\033[0;0;39m'
+PID=$$
 
 echo "Starting menu script at `date`" 2>&1 >> /home/pi/worker.log
 
@@ -19,6 +20,8 @@ meh(){
     done &
     echo ""
     read -p "Job is running in background.  Press [Enter] to continue..." fackEnterKey
+    show_menus
+    read_options
 }
 
 worker() {
@@ -36,6 +39,8 @@ worker() {
     echo ""
     read -p "Job is running in background.  Press [Enter] to continue..." fackEnterKey
     #exit 1
+    show_menus
+    read_options
 }
 
 cleanup() {
@@ -67,6 +72,7 @@ one(){
         sleep 5
         worker
         wait #Wait for worker function to complete before cleanup moves tar file
+        echo "Work completed at `date`.  Cleaning up." 2>&1 >> /home/pi/worker.log
         cleanup
         pause
     fi      
@@ -93,18 +99,26 @@ two(){
 }
 
 three() {
-    jobs
-    if ((`jobs |wc -l` == 0))
-    then
-        echo "No jobs are running"
-    fi
+    #jobs
+    #if ((`jobs |wc -l` == 0))
+    #then
+    #    echo "No jobs are running"
+    #fi
+    #ps -ef |grep zipMotion.sh
+    #ps -A -ww |grep zipMotion
+    echo ""
+    ps -ef|grep zipMotion |grep -v grep
     pause
+    show_menus
+    read_options
 }
 
 four() {
     tail -n100 /home/pi/worker.log
     echo ""
-    read -p "Job is running in background.  Press [Enter] to continue..." fackEnterKey
+    read -p "Tail of the last 100 lines of the log file complete.  Press [Enter] to continue..." fackEnterKey
+    show_menus
+    read_options
 }
 
 # function to display menu
@@ -115,7 +129,7 @@ show_menus() {
     echo "~~~~~~~~~~~~~~~~~"
     echo "1. Run for previous day ${prevDay}"
     echo "2. Enter date for run"
-    echo "3. See Running Job"
+    echo "3. See Running Job Processes"
     echo "4. View Log File"
     echo "q  EXIT"
 }
