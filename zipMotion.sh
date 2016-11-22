@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -m #hopefully enables job control within shell script
 shopt -s nullglob
 srcDir=/var/lib/motion
 destDir=~/motionBkup/
@@ -24,6 +25,26 @@ meh(){
     read_options
 }
 
+processCheck(){
+    if [ -f ./.${dt}motion ]
+    then
+        echo ""
+        echo "It appears a process for this date ${dt} is already running..."
+        echo "If you think this is an error, it is possible the process file was not cleaned up..."
+        read -p "To clear the error, manually delete file ./.${dt}motion and rerun..." fackEnterKey
+        show_menus
+        read_options
+    fi
+}
+
+createProcessFile(){
+    touch ./.${dt}motion
+}
+
+deleteProcessFile(){
+    rm -f ./.${dt}motion
+}
+
 worker() {
     echo "Starting worker function at `date`" 2>&1 >> /home/pi/worker.log
     tarFile=${dt}MotionFiles.tar
@@ -35,10 +56,13 @@ worker() {
         f=${arr[$i]}
         tar -rf /tmp/${tarFile} -P $f 2>&1 >> /dev/null
         sudo rm -rf $f 2>&1 >> /home/pi/worker.log
+        if [ ${fileNum} -ge ${#arr[@]} ]
+        then
+            cleanup
+        fi
     done &
     echo ""
     read -p "Job is running in background.  Press [Enter] to continue..." fackEnterKey
-    #exit 1
     show_menus
     read_options
 }
@@ -46,10 +70,21 @@ worker() {
 cleanup() {
     echo "Starting cleanup function at `date`" 2>&1 >> /home/pi/worker.log
     tarFile=${dt}MotionFiles.tar
-    echo "TARING UP FILE..."
+    echo "TARING UP FILE..." 2>&1 >> /home/pi/worker.log
     gzip /tmp/${tarFile}
-    echo "MOVING TAR FILE..."
-    sudo mv /tmp/${tarFile}.gz ${destDir}
+    echo "MOVING TAR FILE..." 2>&1 >> /home/pi/worker.log
+    
+    if [ -f ${destDir}/${tarFile}.gz ]
+    then
+        echo "Multiple TAR files for this ${dt} exit.  Renaming with process id..." 2>&1 >> /home/pi/worker.log
+        mv /tmp/${tarFile}.gz /tmp/${tarFile}.$$.gz
+        mv /tmp/${tarFile}.$$.gz ${destDir}
+    else
+        sudo mv /tmp/${tarFile}.gz ${destDir}
+    fi
+   
+    deleteProcessFile
+    echo "Work completed at `date`." 2>&1 >> /home/pi/worker.log
 }
 
 pause(){
@@ -65,16 +100,18 @@ one(){
     if [ ${#arr[@]} -le 1 ]
     then
         echo "Nothing to delete..."
+        echo "Nothing to delete.  Script completed at `date`." 2>&1 >> /home/pi/worker.log
         pause
     else
         echo "${#arr[@]} total files to be dealt with..."
         echo "${#arr[@]} FILES TO BE DEALT WITH..." 2>&1 >> /home/pi/worker.log
         sleep 5
+        processCheck
+        createProcessFile
         worker
-        wait #Wait for worker function to complete before cleanup moves tar file
-        echo "Work completed at `date`.  Cleaning up." 2>&1 >> /home/pi/worker.log
-        cleanup
-        pause
+        #wait #Wait for worker function to complete before cleanup moves tar file
+        #cleanup
+        #pause
     fi      
 }
 
@@ -92,20 +129,16 @@ two(){
         echo "${#arr[@]} total files to be dealt with..."
         echo "${#arr[@]} FILES TO BE DEALT WITH..." 2>&1 >> /home/pi/worker.log
         sleep 5
+        processCheck
+        createProcessFile
         worker
-        cleanup
-        pause
+        #wait #Wait for worker function to complete before cleanup moves tar file
+        #cleanup
+        #pause
     fi      
 }
 
 three() {
-    #jobs
-    #if ((`jobs |wc -l` == 0))
-    #then
-    #    echo "No jobs are running"
-    #fi
-    #ps -ef |grep zipMotion.sh
-    #ps -A -ww |grep zipMotion
     echo ""
     ps -ef|grep zipMotion |grep -v grep
     pause
