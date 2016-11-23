@@ -54,8 +54,8 @@ worker() {
         fileNum=$((i + 1))
         echo "Dealing with file number $fileNum of ${#arr[@]} ..." 2>&1 >> /home/pi/worker.log
         f=${arr[$i]}
-        tar -rf /tmp/${tarFile} -P $f 2>&1 >> /dev/null
-        sudo rm -rf $f 2>&1 >> /home/pi/worker.log
+        (tar -rf /tmp/${tarFile} -P $f 2>&1 >> /dev/null)
+        (sudo rm -rf $f 2>&1 >> /home/pi/worker.log)
         if [ ${fileNum} -ge ${#arr[@]} ]
         then
             cleanup
